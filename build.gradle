@@ -1,0 +1,241 @@
+buildscript {
+    ext {
+        springBootVersion = '2.1.0.RELEASE'
+    }
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath "com.diffplug.spotless:spotless-plugin-gradle:3.16.0"
+        classpath "org.sonarsource.scanner.gradle:sonarqube-gradle-plugin:2.6.2"
+        classpath "gradle.plugin.com.boxfuse.client:gradle-plugin-publishing:5.2.4"
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: 'jacoco'
+apply plugin: "org.sonarqube"
+apply plugin: "com.diffplug.gradle.spotless"
+apply plugin: "org.flywaydb.flyway"
+
+ext {
+    extention = 'jar'
+
+    // gradle.propertiesに定義しておく(Nexus情報)
+    if (project.hasProperty('inhouseRepositoryBaseUrl')) {
+        inhouseRepositoryBaseUrl = project.getProperty('inhouseRepositoryBaseUrl')
+    }
+    if (projects.hasProperty('inhouseRepositoryUser')) {
+        inhouseRepositoryUser = project.getProperty('inhouseRepositoryUser')
+    }
+    if (projects.hasProperty('inhouseRepositoryPass')) {
+        inhouseRepositoryPass = project.getProperty('inhouseRepositoryPass')
+    }
+
+    // version
+    artifactVersion = '1.0.0'
+}
+
+configurations {
+    myBatisGenerator
+}
+
+group = 'com.example'
+
+// バージョン
+switch (System.getenv('BRANCH_NAME')) {
+    case 'master':
+        version = "${artifactVersion}-SNAPSHOT"
+        break
+    case 'release':
+        version = "${artifactVersion}-RELEASE"
+        break
+    default:
+        break
+}
+
+sourceCompatibility = 1.8
+
+repositories {
+    // Inhouse Repository
+    if (project.hasProperty('inhouseRepositoryBaseUrl')) {
+        maven {
+            url "$inhouseRepositoryBaseUrl/repository/maven-public"   
+        }
+    }
+    mavenCentral()
+}
+
+sonarqube {
+    properties {
+        property "sonar.inclusions", ["src/main/java/**/*.java"]
+        property "sonar.sourceEncoding", "UTF-8"
+        property "sonar.projectKey", "simple-springboot-app_" + System.getenv('BRANCH_NAME')
+        property "sonar.projectName", "simple-springboot-app_" + System.getenv('BRANCH_NAME')
+        property "sonar.java.binaries", "${project.buildDir}/classes"
+        property "sonar.java.libraries", "${project.buildDir}/**/*.jar"
+        property "sonar.jacoco.reportPaths", "${project.buildDir}/jacoco/test.exec"
+
+    }
+}
+
+dependencies {
+    implementation('org.springframework.boot:spring-boot-starter-actuator')
+    implementation('org.springframework.boot:spring-boot-starter-security')
+    implementation('org.springframework.boot:spring-boot-starter-thymeleaf')
+    implementation('org.springframework.boot:spring-boot-starter-web')
+    implementation('org.flywaydb:flyway-core')
+    implementation('org.mybatis.spring.boot:mybatis-spring-boot-starter:1.3.2')
+    compile('mysql:mysql-connector-java:6.0.6')
+    compileOnly('org.projectlombok:lombok:1.18.4')
+    runtimeOnly('org.springframework.boot:spring-boot-devtools')
+    runtimeOnly('mysql:mysql-connector-java')
+    testImplementation('org.springframework.boot:spring-boot-starter-test')
+    testImplementation('org.springframework.security:spring-security-test')
+
+    myBatisGenerator("org.mybatis.generator:mybatis-generator-core:1.3.7")
+    myBatisGenerator("mysql:mysql-connector-java:5.1.46")
+}
+
+configurations {
+    all {
+        resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
+    }
+}
+
+jacoco {
+    toolVersion = '0.8.2'
+}
+
+bootJar {
+    archiveName = "${baseName}.${extention}"
+}
+
+jar {
+    archiveName = "${baseName}.${extention}"
+}
+
+test {
+    reports.html.enabled = false
+    testLogging {
+        exceptionFormat 'full'
+        info {
+            events 'started', 'passed', 'skipped', 'failed'
+        }
+    }
+}
+
+// Javadoc Error Ignore
+tasks.withType(Javadoc) {
+    options.charSet = "UTF-8"
+    options.encoding = "UTF-8"
+    options.addBooleanOption("Xdoclint:none", true)
+}
+
+// Java Compile Config
+tasks.withType(JavaCompile) {
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+    it.options.encoding = 'UTF-8'
+}
+
+// JavaDoc Jar packaging
+task packageJavadoc(type: Jar, dependsOn: javadoc) {
+    from javadoc.destinationDir
+    classifier = 'javadoc'
+}
+
+// Source Jar Packaging
+task packageSources(type: Jar, dependsOn: classes) {
+    from sourceSets.main.allSource
+    classifier = 'source'
+}
+
+spotless {
+    java {
+        enforceCheck = false
+        licenseHeaderFile rootProject.file('./formatter/LICENSE')
+        eclipse().configFile rootProject.file('./formatter/formatter.xml')
+        ignoreErrorForPath('ssssss')
+        lineEndings 'UNIX'
+    }
+
+    sourceSets {
+        main {
+            java {
+                srcDir 'src/main/java'
+                srcDir 'src-gen/main/java'
+            }
+            resources {
+                srcDir 'src/main/resources'
+                srcDir 'src-gen/main/resources'
+            }
+        }
+    }
+
+    task generateMyBatisCode(type: JavaExec) {
+        classpath = configurations.myBatisGenerator
+        main = 'org.mybatis.generator.api.ShellRunner'
+        args = [
+                '-configfile',
+                "${project.file('generatorConfig.xml')}",
+                '-overwrite'
+        ]
+    }
+
+    flyway {
+        url = 'jdbc:mysql://localhost:3307?useSSL=false'
+        user = 'root'
+        password = 'password'
+        schemas = ['workdb', 'sampledb']
+    }
+
+    task flywayRelease {
+        doLast {
+            flywayRepair.execute()
+            flywayMigrate.execute()
+            flywayInfo.execute()
+        }
+    }
+}
+
+// Deploy artifact to Nexus
+publishing {
+    repositories {
+        if (project.hasProperty('inhouseRepositoryBaseUrl')) {
+            maven {
+                def snapshotsRepoUrl = "$inhouseRepositoryBaseUrl/repository/maven-snapshots/"
+                def releasesRepoUrl = "$inhouseRepositoryBaseUrl/repository/maven-releases/"
+
+                url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+
+                credentials {
+                    username = inhouseRepositoryUser
+                    password = inhouseRepositoryPass
+                }
+            }
+        } else {
+            println 'skipping Deploy artifact to Nexus'
+        }
+    }
+    publications {
+        artifact(MavenPublication) {
+            from components.java
+            artifact packageJavadoc
+            artifact packageSources
+        }
+    }
+}
+publish.dependsOn assemble
+
+generateMyBatisCode.group = 'mybatis generator'

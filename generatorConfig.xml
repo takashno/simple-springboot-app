@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<!--
+  MyBatis用の自動生成ツールであるMyBatisGeneratorの設定ファイル.
+-->
+<generatorConfiguration>
+    <context id="sampledb" targetRuntime="MyBatis3">
+
+        <!-- プラグイン定義 -->
+        <plugin type="org.mybatis.generator.plugins.SerializablePlugin" />
+        <plugin type="org.mybatis.generator.plugins.RowBoundsPlugin" />
+        <plugin type="org.mybatis.generator.plugins.MapperAnnotationPlugin"/>
+        <plugin type="org.mybatis.generator.plugins.FluentBuilderMethodsPlugin"/>
+
+        <!-- JDBC接続定義 -->
+        <jdbcConnection
+                driverClass="com.mysql.jdbc.Driver"
+                connectionURL="jdbc:mysql://localhost:3308/sampledb?useSSL=false"
+                userId="root"
+                password="password">
+        </jdbcConnection>
+
+        <!-- Model/Entity -->
+        <javaModelGenerator
+                targetPackage="com.example.simplespringbootapp.domain.model"
+                targetProject="./src/main/java">
+        </javaModelGenerator>
+
+        <!-- XMLMapper -->
+        <sqlMapGenerator
+                targetPackage="com.example.simplespringbootapp.domain.mapper"
+                targetProject="./src-gen/main/resources">
+        </sqlMapGenerator>
+
+        <!-- MapperInterface -->
+        <javaClientGenerator
+                type="XMLMAPPER"
+                targetPackage="com.example.simplespringbootapp.domain.mapper"
+                targetProject="./src-gen/main/java">
+        </javaClientGenerator>
+
+        <!-- Tables -->
+        <table tableName="user"/>
+        <table tableName="todo"/>
+
+    </context>
+</generatorConfiguration>

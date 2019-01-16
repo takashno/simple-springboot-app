@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sample SpringBoot Application</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+          integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+</head>
+<script type="text/javascript">
+    function setParam(str1,str2){
+        document.getElementById('todoId').value = str1;
+        document.getElementById('userId').value = str2;
+    }
+</script>
+<body>
+<!-- Navbar -->
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <span class="navbar-brand mb-0 h1">ToDo</span>
+</nav>
+<main class="container" style="margin-top: 80px;">
+    <div class="row">
+        <div class="col-12">
+            <h2>Todoリスト</h2>
+            <a href="./regist.html" th:href="@{/todo/regist}" class="btn btn-md btn-success">新規TODO登録</a>
+            <a href="./userRegist.html" th:href="@{/user}" class="btn btn-md btn-info">ユーザ追加</a>
+            <form name="todoCreate" method="post" id="actions" action="./list.html" th:action="@{/todo/action}"
+                  class="mt-3">
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>Todo名</th>
+                        <th>説明</th>
+                        <th>優先度</th>
+                        <th>開始時間</th>
+                        <th>終了時間</th>
+                        <th></th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody th:each="todo : ${todoList}">
+                    <tr>
+                        <td th:text="${todo.title}">Todo</td>
+                        <td th:text="${todo.description}">desc</td>
+                        <td>
+                            <div th:switch="${todo.priority}">
+                                <p th:case="1" th:text="リアル"></p>
+                                <p th:case="2" th:text="高"></p>
+                                <p th:case="3" th:text="通常以上"></p>
+                                <p th:case="4" th:text="通常"></p>
+                                <p th:case="5" th:text="通常以下"></p>
+                                <p th:case="6" th:text="低"></p>
+                                <p th:case="9" th:text="完了"></p>
+                                <p th:case="*">たかい</p>
+                            </div>
+                        </td>
+                        <td th:text="${todo.start}">2018/09/09</td>
+                        <td th:text="${todo.end}">2018/10/10</td>
+                        <div th:if="${todo.priority} != 9">
+                            <td><input type="submit" name="finish" value="完了" class="btn btn-sm btn-secondary"
+                                       th:onclick="setParam([[${todo.id}]],[[${todo.userId}]])"></td>
+                        </div>
+                        <td><input type="submit" name="delete" value="削除"  class="btn btn-sm btn-danger"
+                                   th:onclick="setParam([[${todo.id}]],[[${todo.userId}]])"></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <input type="hidden" id="todoId" name="todoId">
+                <input type="hidden" id="userId" name="userId">
+            </form>
+        </div>
+    </div>
+</main>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"
+        integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+        integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+        crossorigin="anonymous"></script>
+</body>
+</html>
